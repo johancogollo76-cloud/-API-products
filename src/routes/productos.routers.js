@@ -1,10 +1,8 @@
-import { db } from "./db.js";
-import "dotenv/config";
-import  {verificarToken, soloAdmin} from "./middlewares.js";
-
+import express from "express";
+import { db } from "../db.js";
+import { verificarToken, soloAdmin } from "../middlewares/middlewares.js";
 
 export const productosrouter = express.Router();
-
 // GET /productos  (opcional: ?max=50000)
 productosrouter.get("/productos", async function (req, res) {
     try {

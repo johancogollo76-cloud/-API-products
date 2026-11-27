@@ -1,10 +1,9 @@
-import { db } from "./db.js";
-import "dotenv/config";
+import express from "express";
+import { db } from "../db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
 export const authrouter = express.Router();
-
 // POST /registro
 authrouter.post("/registro", async function (req, res) {
     try {
