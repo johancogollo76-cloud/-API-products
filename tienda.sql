@@ -34,3 +34,18 @@ INSERT INTO productos (nombre, precio, stock) VALUES
 ('ventilador USB', 40000, 16);
 
 select * FROM productos;
+
+create table usuarios (
+    id int AUTO_INCREMENT primary key,
+    email VARCHAR(100) not null unique,
+    password varchar (100) not null,
+    rol varchar(20) not null DEFAULT 'usuario'
+);
+
+ALTER TABLE usuarios CHANGE password password_hash VARCHAR(255) NOT NULL;
+select * FROM usuarios;
+-- password guarada el hash, nunca la clave 
+-- await bcryp.hash(password,10)
+
+
+UPDATE usuarios SET rol = 'admin' WHERE email = 'sebastian@gmail.com';

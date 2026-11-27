@@ -1,5 +1,9 @@
 import express from "express";
 import { db } from "./db.js";
+import "dotenv/config";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import  {verificarToken, soloAdmin} from "./middlewares.js";
 
 const app = express();
 app.set("json spaces", 2);
@@ -50,9 +54,71 @@ app.get("/productos/:id", async function (req, res) {
         res.status(500).json({ error: "Error en el servidor" });
     }
 });
+// POST /registro
+app.post("/registro", async function (req, res) {
+    try {
+        const email = req.body.email;
+        const password = req.body.password;
+        if (!email || !password) {
+            return res.status(400).json({ error: "Faltan datos" });
+        }
+        const existe = await db.query(
+            "SELECT id FROM usuarios WHERE email = ?",
+            [email]
+        );
+        if (existe[0].length > 0) {
+            return res.status(409).json({ error: "El email ya está registrado" });
+        }
+        const hash = await bcrypt.hash(password, 10);
+        const resultado = await db.query(
+            "INSERT INTO usuarios (email, password_hash) VALUES (?, ?)",
+            [email, hash]
+        );
+        res.status(201).json({ id: resultado[0].insertId, email: email, rol: "usuario" });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: "Error en el servidor" });
+    }
+});
+
+// POST /login
+app.post("/login", async function (req, res) {
+    try {
+        const email = req.body.email;
+        const password = req.body.password;
+        if (!email || !password) {
+            return res.status(400).json({ error: "Faltan datos" });
+        }
+        const resultado = await db.query(
+            "SELECT * FROM usuarios WHERE email = ?",
+            [email]
+        );
+        const filas = resultado[0];
+        if (filas.length === 0) {
+            return res.status(401).json({ error: "Credenciales inválidas" });
+        }
+        const usuario = filas[0];
+        const coincide = await bcrypt.compare(password, usuario.password_hash);
+        if (!coincide) {
+            return res.status(401).json({ error: "Credenciales inválidas" });
+        }
+        const token = jwt.sign(
+            { id: usuario.id, email: usuario.email, rol: usuario.rol },
+            process.env.JWT_SECRET,
+            { expiresIn: "1h" }
+        );
+
+        res.status(200).json({ token: token });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: "Error en el servidor" });
+    }
+});
+
+
 
 // POST /productos
-app.post("/productos", async function (req, res) {
+app.post("/productos", verificarToken, async function (req, res) {
     try {
         const nombre = req.body.nombre;
         const precio = req.body.precio;
@@ -79,8 +145,10 @@ app.post("/productos", async function (req, res) {
     }
 });
 
+
+
 // PUT /productos/:id  (reemplaza todo el producto)
-app.put("/productos/:id", async function (req, res) {
+app.put("/productos/:id", verificarToken, async function (req, res) {
     try {
         const id = Number(req.params.id);
         const nombre = req.body.nombre;
@@ -112,7 +180,7 @@ app.put("/productos/:id", async function (req, res) {
 });
 
 // PATCH /productos/:id  (cambia solo los campos enviados)
-app.patch("/productos/:id", async function (req, res) {
+app.patch("/productos/:id", verificarToken, async function (req, res) {
     try {
         const id = Number(req.params.id);
         const nombre = req.body.nombre;
@@ -165,7 +233,7 @@ app.patch("/productos/:id", async function (req, res) {
 });
 
 // DELETE /productos/:id
-app.delete("/productos/:id", async function (req, res) {
+app.delete("/productos/:id", verificarToken,soloAdmin, async function (req, res) {
     try {
         const id = Number(req.params.id);
 
@@ -183,6 +251,8 @@ app.delete("/productos/:id", async function (req, res) {
         res.status(500).json({ error: "Error en el servidor" });
     }
 });
+
+
 
 app.listen(3000, function () {
     console.log("Servidor listo");
